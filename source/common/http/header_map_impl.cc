@@ -295,14 +295,14 @@ struct HeaderMapImpl::StaticLookupTable : public TrieLookupTable<EntryCb> {
   }
 };
 
-uint64_t HeaderMapImpl::appendToHeader(HeaderString& header, absl::string_view data) {
+uint64_t HeaderMapImpl::appendToHeader(HeaderString& header, absl::string_view data, absl::string_view delimiter) {
   if (data.empty()) {
     return 0;
   }
   uint64_t byte_size = 0;
   if (!header.empty()) {
-    header.append(",", 1);
-    byte_size += 1;
+    header.append(delimiter.data(), delimiter.size());
+    byte_size += delimiter.size();
   }
   header.append(data.data(), data.size());
   return data.size() + byte_size;
@@ -467,6 +467,16 @@ void HeaderMapImpl::addCopy(const LowerCaseString& key, const std::string& value
   ASSERT(new_value.empty()); // NOLINT(bugprone-use-after-move)
 }
 
+void HeaderMapImpl::appendToHeaderValue(const LowerCaseString& key, const std::string& value) {
+  Http::HeaderEntry* entry = getExisting(key);
+  if (entry != nullptr) {
+    const uint64_t added_size = appendToHeader(entry->value(), value);
+    addSize(added_size);
+  } else {
+    addCopy(key, value);
+  }
+}
+
 void HeaderMapImpl::setReference(const LowerCaseString& key, const std::string& value) {
   HeaderString ref_key(key);
   HeaderString ref_value(value);
@@ -481,6 +491,18 @@ void HeaderMapImpl::setReferenceKey(const LowerCaseString& key, const std::strin
   remove(key);
   insertByKey(std::move(ref_key), std::move(new_value));
   ASSERT(new_value.empty()); // NOLINT(bugprone-use-after-move)
+}
+
+void HeaderMapImpl::setCopy(const LowerCaseString& key, const std::string& value) {
+  // Replaces a header if it exists, otherwise adds by copy.
+  Http::HeaderEntry* entry = getExisting(key);
+
+  if (entry != nullptr) {
+    updateSize(entry->value().size(), value.size());
+    entry->value(value.data(), value.size());
+  } else {
+    addCopy(key, value);
+  }
 }
 
 absl::optional<uint64_t> HeaderMapImpl::byteSize() const { return cached_byte_size_; }
@@ -507,17 +529,6 @@ uint64_t HeaderMapImpl::byteSizeInternal() const {
 const HeaderEntry* HeaderMapImpl::get(const LowerCaseString& key) const {
   for (const HeaderEntryImpl& header : headers_) {
     if (header.key() == key.get().c_str()) {
-      return &header;
-    }
-  }
-
-  return nullptr;
-}
-
-HeaderEntry* HeaderMapImpl::get(const LowerCaseString& key) {
-  for (HeaderEntryImpl& header : headers_) {
-    if (header.key() == key.get().c_str()) {
-      cached_byte_size_.reset();
       return &header;
     }
   }
@@ -652,6 +663,16 @@ HeaderMapImpl::HeaderEntryImpl* HeaderMapImpl::getExistingInline(absl::string_vi
     StaticLookupResponse ref_lookup_response = cb(*this);
     return *ref_lookup_response.entry_;
   }
+  return nullptr;
+}
+
+HeaderEntry* HeaderMapImpl::getExisting(const LowerCaseString& key) {
+  for (HeaderEntryImpl& header : headers_) {
+    if (header.key() == key.get().c_str()) {
+      return &header;
+    }
+  }
+
   return nullptr;
 }
 

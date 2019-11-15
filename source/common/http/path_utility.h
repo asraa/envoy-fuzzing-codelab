@@ -12,9 +12,9 @@ class PathUtil {
 public:
   // Returns if the normalization succeeds.
   // If it is successful, the param will be updated with the normalized path.
-  static bool canonicalPath(HeaderEntry& path_header);
+  static bool canonicalPath(HeaderMap& headers);
   // Merges two or more adjacent slashes in path part of URI into one.
-  static void mergeSlashes(HeaderEntry& path_header);
+  static void mergeSlashes(HeaderMap& headers);
 };
 
 } // namespace Http

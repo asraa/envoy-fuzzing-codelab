@@ -86,7 +86,7 @@ public:
    * @param value the HeaderString onto which format the timeout in 'grpc-timeout' format, up to
    *        8 decimal digits and a letter indicating the unit.
    */
-  static void toGrpcTimeout(const std::chrono::milliseconds& timeout, Http::HeaderString& value);
+  static void toGrpcTimeout(const std::chrono::milliseconds& timeout, Http::HeaderMap& headers);
 
   /**
    * Serialize protobuf message with gRPC frame header.
