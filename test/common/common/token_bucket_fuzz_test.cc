@@ -33,9 +33,10 @@ DEFINE_PROTO_FUZZER(const test::common::common::TokenBucketFuzzTestCase& input) 
     ENVOY_LOG_MISC(trace, "Action {}", action.DebugString());
     switch (action.action_selector_case()) {
     case test::common::common::Action::kConsume: {
-      const auto& consume = action.consume();
+      // The line below is provided for convenience. You may uncomment it and use it!
+      // const auto& consume = action.consume();
       // Your code here.
-      // Add a logging statement to trace how many tokens were consumed!
+      // Recommended: add a logging statement to trace how many tokens were consumed!
       break;
     }
     case test::common::common::Action::kNextToken: {
@@ -48,7 +49,7 @@ DEFINE_PROTO_FUZZER(const test::common::common::TokenBucketFuzzTestCase& input) 
     }
     case test::common::common::Action::kAdvanceTime: {
       // Your code here.
-      // Add a logging statement to trace how much time advanced!
+      // Recommended: add a logging statement to trace how much time advanced!
       break;
     }
     default:
