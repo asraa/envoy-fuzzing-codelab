@@ -9,16 +9,16 @@ import "google/protobuf/empty.proto";
 import "validate/validate.proto";
 
 message Consume {
-  uint64 tokens = 1 [(validate.rules).uint64 = {gt: 0}];
+  uint32 tokens = 1;
   bool allow_partial = 2;
 }
 
 message Reset {
-  uint64 num_tokens = 1 [(validate.rules).uint64 = {gt: 0}];
+  uint64 num_tokens = 1;
 }
 
 message AdvanceTime {
-  uint32 milliseconds = 1 [(validate.rules).uint32 = {gt: 0}];
+  uint32 milliseconds = 1;
 }
 
 message Action {
