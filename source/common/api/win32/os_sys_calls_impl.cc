@@ -170,6 +170,16 @@ bool OsSysCallsImpl::supportsMmsg() const {
   return false;
 }
 
+bool OsSysCallsImpl::supportsUdpGro() const {
+  // Windows doesn't support it.
+  return false;
+}
+
+bool OsSysCallsImpl::supportsUdpGso() const {
+  // Windows doesn't support it.
+  return false;
+}
+
 SysCallIntResult OsSysCallsImpl::ftruncate(int fd, off_t length) {
   const int rc = ::_chsize_s(fd, length);
   return {rc, rc == 0 ? 0 : errno};
@@ -246,7 +256,7 @@ SysCallIntResult OsSysCallsImpl::shutdown(os_fd_t sockfd, int how) {
 
 SysCallIntResult OsSysCallsImpl::socketpair(int domain, int type, int protocol, os_fd_t sv[2]) {
   if (sv == nullptr) {
-    return {SOCKET_ERROR, WSAEINVAL};
+    return {SOCKET_ERROR, SOCKET_ERROR_INVAL};
   }
 
   sv[0] = sv[1] = INVALID_SOCKET;
@@ -274,7 +284,7 @@ SysCallIntResult OsSysCallsImpl::socketpair(int domain, int type, int protocol, 
     a.in6.sin6_addr = in6addr_loopback;
     a.in6.sin6_port = 0;
   } else {
-    return {SOCKET_ERROR, WSAEINVAL};
+    return {SOCKET_ERROR, SOCKET_ERROR_INVAL};
   }
 
   auto onErr = [this, listener, sv]() -> void {
@@ -337,6 +347,16 @@ SysCallIntResult OsSysCallsImpl::listen(os_fd_t sockfd, int backlog) {
 SysCallSizeResult OsSysCallsImpl::write(os_fd_t sockfd, const void* buffer, size_t length) {
   const ssize_t rc = ::send(sockfd, static_cast<const char*>(buffer), length, 0);
   return {rc, rc != -1 ? 0 : ::WSAGetLastError()};
+}
+
+SysCallSocketResult OsSysCallsImpl::accept(os_fd_t sockfd, sockaddr* addr, socklen_t* addrlen) {
+  const os_fd_t rc = ::accept(sockfd, addr, addrlen);
+  if (SOCKET_INVALID(rc)) {
+    return {rc, ::WSAGetLastError()};
+  }
+
+  setsocketblocking(rc, false);
+  return {rc, 0};
 }
 
 } // namespace Api

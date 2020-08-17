@@ -8,13 +8,15 @@ binary program restarts. The metrics are tracked as:
  * Histograms: mapping ranges of values to frequency. The ranges are auto-adjusted as
    data accumulates. Unlike counters and gauges, histogram data is not retained across
    binary program restarts.
+ * TextReadouts: Unicode strings. Unlike counters and gauges, text readout data
+   is not retained across binary program restarts.
 
 In order to support restarting the Envoy binary program without losing counter and gauge
 values, they are passed from parent to child in an RPC protocol.
 They were previously held in shared memory, which imposed various restrictions.
 Unlike the shared memory implementation, the RPC passing *requires a mode-bit specified
 when constructing gauges indicating whether it should be accumulated across hot-restarts*.
-    
+
 ## Performance and Thread Local Storage
 
 A key tenant of the Envoy architecture is high performance on machines with
@@ -75,11 +77,23 @@ followed.
    accumulates in to *interval* histograms.
  * Finally the main *interval* histogram is merged to *cumulative* histogram.
 
+`ParentHistogram`s are held weakly a set in ThreadLocalStore. Like other stats,
+they keep an embedded reference count and are removed from the set and destroyed
+when the last strong reference disappears. Consequently, we must hold a lock for
+the set when decrementing histogram reference counts. A similar process occurs for
+other types of stats, but in those cases it is taken care of in `AllocatorImpl`.
+There are strong references to `ParentHistograms` in TlsCacheEntry::parent_histograms_.
+
+Thread-local `TlsHistogram`s are created on behalf of a `ParentHistogram`
+whenever accessed from a worker thread. They are strongly referenced in the
+`ParentHistogram` as well as in a cache in the `ThreadLocalStore`, to help
+maintain data continuity as scopes are re-created during operation.
+
 ## Stat naming infrastructure and memory consumption
 
 Stat names are replicated in several places in various forms.
 
- * Held with the stat values, in `CounterImpl` and `GaugeImpl`, which are defined in
+ * Held with the stat values, in `CounterImpl`, `GaugeImpl` and `TextReadoutImpl`, which are defined in
    [allocator_impl.cc](https://github.com/envoyproxy/envoy/blob/master/source/common/stats/allocator_impl.cc)
  * In [MetricImpl](https://github.com/envoyproxy/envoy/blob/master/source/common/stats/metric_impl.h)
    in a transformed state, with tags extracted into vectors of name/value strings.
